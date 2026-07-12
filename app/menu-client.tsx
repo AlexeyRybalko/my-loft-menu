@@ -421,8 +421,28 @@ export default function MenuClient() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const reducedMotion = useReducedMotion();
   const navRef = useRef<HTMLElement>(null);
+  const navigationTargetRef = useRef<string | null>(null);
+  const navigationStartTimerRef = useRef(0);
+  const navigationReleaseTimerRef = useRef(0);
 
   const categoryIds = useMemo(() => categories.map((category) => category.id), [categories]);
+
+  const releaseNavigationLock = useCallback(() => {
+    window.clearTimeout(navigationStartTimerRef.current);
+    window.clearTimeout(navigationReleaseTimerRef.current);
+    navigationTargetRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const releaseOnManualScroll = () => releaseNavigationLock();
+    window.addEventListener("wheel", releaseOnManualScroll, { passive: true });
+    window.addEventListener("touchstart", releaseOnManualScroll, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", releaseOnManualScroll);
+      window.removeEventListener("touchstart", releaseOnManualScroll);
+      releaseNavigationLock();
+    };
+  }, [releaseNavigationLock]);
 
   useEffect(() => {
     let frame = 0;
@@ -472,7 +492,7 @@ export default function MenuClient() {
             bestScore = score;
           }
         }
-        if (bestId) setActiveId(bestId);
+        if (bestId && !navigationTargetRef.current) setActiveId(bestId);
       },
       {
         root: null,
@@ -486,6 +506,7 @@ export default function MenuClient() {
   }, [categoryIds, openIds]);
 
   const toggleCategory = useCallback((id: string) => {
+    releaseNavigationLock();
     setOpenIds((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -493,9 +514,14 @@ export default function MenuClient() {
       return next;
     });
     setActiveId(id);
-  }, []);
+  }, [releaseNavigationLock]);
 
   const navigateToCategory = useCallback((id: string) => {
+    window.clearTimeout(navigationStartTimerRef.current);
+    window.clearTimeout(navigationReleaseTimerRef.current);
+    navigationTargetRef.current = id;
+    const alreadyOpen = openIds.has(id);
+
     setOpenIds((current) => {
       if (current.has(id)) return current;
       const next = new Set(current);
@@ -503,15 +529,30 @@ export default function MenuClient() {
       return next;
     });
     setActiveId(id);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.getElementById(`category-${id}`)?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+
+    navigationStartTimerRef.current = window.setTimeout(() => {
+      const target = document.getElementById(`category-${id}`);
+      const nav = navRef.current;
+      if (!target || !nav) {
+        releaseNavigationLock();
+        return;
+      }
+
+      const stickyTop = Number.parseFloat(window.getComputedStyle(nav).top) || 0;
+      const navHeight = nav.getBoundingClientRect().height;
+      const targetTop = window.scrollY + target.getBoundingClientRect().top;
+      const destination = Math.max(0, targetTop - stickyTop - navHeight - 12);
+
+      window.scrollTo({
+        top: destination,
+        behavior: reducedMotion ? "auto" : "smooth",
       });
-    });
-  }, []);
+
+      navigationReleaseTimerRef.current = window.setTimeout(() => {
+        if (navigationTargetRef.current === id) navigationTargetRef.current = null;
+      }, reducedMotion ? 80 : 1100);
+    }, alreadyOpen ? 30 : 360);
+  }, [openIds, reducedMotion, releaseNavigationLock]);
 
   return (
     <main className="page-shell">
