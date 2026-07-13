@@ -393,10 +393,23 @@ html.is-preloading body { overflow: hidden; }
   aspect-ratio: 326 / 110;
   overflow: hidden;
   border-radius: 8px;
-  background: #151515;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 223, 117, .045), transparent 38%),
+    linear-gradient(145deg, #202525, #121515);
   pointer-events: none;
 }
-.decorative-carousel::before { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px; content: ""; background: url("/assets/logos/mark.webp") center / contain no-repeat; opacity: 0; transform: translate(-50%, -50%); }
+.decorative-carousel::before { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px; content: ""; background: url("/assets/logos/mark.webp") center / contain no-repeat; opacity: 0; transform: translate(-50%, -50%); transition: opacity 420ms ease; }
+.decorative-carousel::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 223, 117, .025) 36%, rgba(255, 241, 177, .11) 49%, rgba(255, 223, 117, .025) 62%, transparent 78%);
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: opacity 520ms ease;
+}
+.decorative-carousel:has(img.is-visible.image-loading)::before { opacity: .09; }
+.decorative-carousel:has(img.is-visible.image-loading)::after { opacity: 1; animation: image-loading-sweep 1700ms cubic-bezier(.4, 0, .2, 1) infinite; }
 .decorative-carousel:has(img.is-visible.image-error) { background: radial-gradient(circle at 50% 45%, rgba(255,223,117,.08), transparent 38%), linear-gradient(145deg, #202525, #0d0f10); }
 .decorative-carousel:has(img.is-visible.image-error)::before { opacity: .16; }
 .decorative-carousel img {
@@ -443,7 +456,7 @@ html.is-preloading body { overflow: hidden; }
 .footer-logo-wrap { position: relative; width: 101px; height: 80px; }
 .footer-logo-wrap > img { width: 101px; height: 80px; object-fit: contain; }
 .age { position: absolute; top: -2px; right: -8px; display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--accent); border-radius: 50%; color: white; font-size: 20px; font-weight: 300; line-height: 1; }
-.footer-line { width: 1px; height: 90px; background: linear-gradient(180deg, transparent, rgba(255,223,117,.52) 18%, rgba(255,223,117,.52) 82%, transparent); }
+.footer-line { width: 1px; height: 90px; background: rgba(255,223,117,.52); }
 .footer-copy { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
 .footer-copy p { margin: 0; font-family: "Montserrat Alternates", sans-serif; font-size: 14px; line-height: 1.64; }
 .footer-copy small { font-size: 8px; line-height: 1.25; }
@@ -476,6 +489,18 @@ html.is-preloading body { overflow: hidden; }
 .scroll-to-top span { width: 10px; height: 10px; margin-top: 5px; border-top: 1.5px solid var(--accent); border-left: 1.5px solid var(--accent); transform: rotate(45deg); }
 .scroll-to-top:active { transform: scale(.94); }
 .scroll-to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@keyframes image-loading-sweep {
+  0% { transform: translateX(-100%); }
+  58%, 100% { transform: translateX(100%); }
+}
+
+@media (min-width: 481px) {
+  body::before {
+    background-color: #232727;
+    background-image: none;
+  }
+}
 
 @media (max-width: 359px) {
   :root { --content-width: calc(100vw - 24px); }
@@ -510,4 +535,5 @@ html.is-preloading body { overflow: hidden; }
   .preloader.is-finishing .preloader-progress span,
   .preloader.is-leaving .preloader-progress span { transform: scaleX(1); }
   .decorative-carousel img { animation: none !important; transform: none !important; }
+  .decorative-carousel:has(img.is-visible.image-loading)::after { animation: none !important; opacity: .22; transform: none; }
 }
