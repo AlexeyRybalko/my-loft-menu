@@ -273,15 +273,54 @@ function PromoCarousel({ promotions }: { promotions: Promotion[] }) {
   );
 }
 
-function PriceList({ items }: { items: MenuLine[] }) {
+type DescriptionSelection = {
+  item: MenuLine;
+  volume?: string;
+  price?: string;
+  trigger: HTMLButtonElement;
+};
+
+function PriceList({
+  items,
+  volume,
+  price,
+  onDescribe,
+}: {
+  items: MenuLine[];
+  volume?: string;
+  price?: string;
+  onDescribe: (selection: DescriptionSelection) => void;
+}) {
   return (
     <div className="price-list">
       {items.map((item) => (
         <div className="price-entry" key={item.name}>
-          <div className="price-row">
-            <span>{item.name}</span>
-            {item.price && <strong>{item.price}</strong>}
-          </div>
+          {item.description ? (
+            <button
+              className="price-row price-row-button"
+              type="button"
+              aria-label={`${item.name}. Подробнее`}
+              onClick={(event) =>
+                onDescribe({
+                  item,
+                  volume,
+                  price: item.price ?? price,
+                  trigger: event.currentTarget,
+                })
+              }
+            >
+              <span className="price-name">
+                {item.name}
+                <span className="description-info" aria-hidden="true">i</span>
+              </span>
+              {item.price && <strong>{item.price}</strong>}
+            </button>
+          ) : (
+            <div className="price-row">
+              <span>{item.name}</span>
+              {item.price && <strong>{item.price}</strong>}
+            </div>
+          )}
           {item.details && (
             <ul>
               {item.details.map((detail) => (
@@ -291,6 +330,178 @@ function PriceList({ items }: { items: MenuLine[] }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function DescriptionSheet({
+  selection,
+  reducedMotion,
+  onClose,
+}: {
+  selection: DescriptionSelection;
+  reducedMotion: boolean;
+  onClose: () => void;
+}) {
+  const [closing, setClosing] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  const dragOffsetRef = useRef(0);
+  const dragMovedRef = useRef(false);
+  const closeTimerRef = useRef(0);
+
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    if (reducedMotion) {
+      onClose();
+      return;
+    }
+    setClosing(true);
+    closeTimerRef.current = window.setTimeout(onClose, 220);
+  }, [closing, onClose, reducedMotion]);
+
+  useEffect(() => {
+    const page = document.querySelector<HTMLElement>(".page-shell");
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const previousBodyStyles = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    const pageWasInert = page?.hasAttribute("inert") ?? false;
+
+    page?.setAttribute("inert", "");
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    closeButtonRef.current?.focus({ preventScroll: true });
+
+    return () => {
+      window.clearTimeout(closeTimerRef.current);
+      if (!pageWasInert) page?.removeAttribute("inert");
+      body.style.position = previousBodyStyles.position;
+      body.style.top = previousBodyStyles.top;
+      body.style.width = previousBodyStyles.width;
+      body.style.overflow = previousBodyStyles.overflow;
+      window.scrollTo({ top: scrollY, behavior: "auto" });
+      window.requestAnimationFrame(() => selection.trigger.focus({ preventScroll: true }));
+    };
+  }, [selection.trigger]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      requestClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleDragStart = (event: React.PointerEvent<HTMLButtonElement>) => {
+    dragStartYRef.current = event.clientY;
+    dragOffsetRef.current = 0;
+    dragMovedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleDragMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (dragStartYRef.current === null) return;
+    const nextOffset = Math.max(0, event.clientY - dragStartYRef.current);
+    dragOffsetRef.current = nextOffset;
+    if (nextOffset > 4) dragMovedRef.current = true;
+    setDragOffset(nextOffset);
+  };
+
+  const handleDragEnd = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragStartYRef.current = null;
+    if (dragOffsetRef.current > 64) {
+      dragOffsetRef.current = 0;
+      setDragOffset(0);
+      requestClose();
+    } else {
+      dragOffsetRef.current = 0;
+      setDragOffset(0);
+    }
+  };
+
+  return (
+    <div
+      className={`description-backdrop ${closing ? "is-closing" : ""}`}
+      role="presentation"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
+    >
+      <section
+        ref={dialogRef}
+        className={`description-sheet ${closing ? "is-closing" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="description-title"
+        aria-describedby="description-copy"
+        onKeyDown={handleKeyDown}
+        style={dragOffset ? { transform: `translateY(${dragOffset}px)` } : undefined}
+      >
+        <button
+          className="description-handle"
+          type="button"
+          aria-label="Закрыть описание"
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
+          onClick={() => {
+            if (!dragMovedRef.current) requestClose();
+            dragMovedRef.current = false;
+          }}
+        >
+          <span aria-hidden="true" />
+        </button>
+        <div className="description-sheet-header">
+          <p>Подробнее о напитке</p>
+          <button
+            ref={closeButtonRef}
+            className="description-close"
+            type="button"
+            aria-label="Закрыть описание"
+            onClick={requestClose}
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
+        <h2 id="description-title">{selection.item.name}</h2>
+        <p id="description-copy" className="description-copy">
+          {selection.item.description}
+        </p>
+        {(selection.volume || selection.price) && (
+          <div className="description-meta" aria-label="Объём и цена">
+            {selection.volume && <span>{selection.volume}</span>}
+            {selection.price && <strong>{selection.price}</strong>}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -329,6 +540,7 @@ function CategoryCard({
   onToggle,
   carouselOffsetMs,
   carouselIntervalOffsetMs,
+  onDescribe,
 }: {
   category: MenuCategory;
   open: boolean;
@@ -336,6 +548,7 @@ function CategoryCard({
   onToggle: () => void;
   carouselOffsetMs: number;
   carouselIntervalOffsetMs: number;
+  onDescribe: (selection: DescriptionSelection) => void;
 }) {
   const panel = useAnimatedPresence(open);
 
@@ -374,7 +587,12 @@ function CategoryCard({
             intervalOffsetMs={carouselIntervalOffsetMs}
           />
           <div className="primary-menu-layout">
-            <PriceList items={category.items} />
+            <PriceList
+              items={category.items}
+              volume={category.sideLabel}
+              price={category.sidePrice}
+              onDescribe={onDescribe}
+            />
             {(category.sideLabel || category.sidePrice) && (
               <div className="side-price">
                 <span>{category.sideLabel}</span>
@@ -394,7 +612,12 @@ function CategoryCard({
                 intervalOffsetMs={carouselIntervalOffsetMs + (subsectionIndex + 1) * 170}
               />
               <div className="subsection-layout">
-                <PriceList items={subsection.items} />
+                <PriceList
+                  items={subsection.items}
+                  volume={subsection.sideLabel}
+                  price={subsection.sidePrice}
+                  onDescribe={onDescribe}
+                />
                 {(subsection.sideLabel || subsection.sidePrice) && (
                   <div className="side-price">
                     <span>{subsection.sideLabel}</span>
@@ -419,6 +642,8 @@ export default function MenuClient() {
   const [navStuck, setNavStuck] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [descriptionSelection, setDescriptionSelection] =
+    useState<DescriptionSelection | null>(null);
   const reducedMotion = useReducedMotion();
   const navRef = useRef<HTMLElement>(null);
   const navigationTargetRef = useRef<string | null>(null);
@@ -555,7 +780,8 @@ export default function MenuClient() {
   }, [openIds, reducedMotion, releaseNavigationLock]);
 
   return (
-    <main className="page-shell">
+    <>
+      <main className="page-shell">
       <header className={`hero ${hoursOpen ? "hours-open" : ""}`}>
         <img className="hero-mark" src="/assets/logos/mark.webp" alt="" />
         <img className="hero-wordmark" src="/assets/logos/wordmark.webp" alt="MY Loft" />
@@ -617,6 +843,7 @@ export default function MenuClient() {
               onToggle={() => toggleCategory(category.id)}
               carouselOffsetMs={index * 900}
               carouselIntervalOffsetMs={index * 280}
+              onDescribe={setDescriptionSelection}
             />
           </div>
         ))}
@@ -644,7 +871,7 @@ export default function MenuClient() {
         <div className="footer-copy">
           <p>Курить строго запрещено -<br />Курите нежно!</p>
           <small>Цены и наличие позиций уточняйте у администратора</small>
-          <small className="accent">Меню обновлено: июнь 2026</small>
+          <small className="accent">Меню обновлено: июль 2026</small>
         </div>
       </footer>
 
@@ -658,6 +885,14 @@ export default function MenuClient() {
       >
         <span aria-hidden="true" />
       </button>
-    </main>
+      </main>
+      {descriptionSelection && (
+        <DescriptionSheet
+          selection={descriptionSelection}
+          reducedMotion={reducedMotion}
+          onClose={() => setDescriptionSelection(null)}
+        />
+      )}
+    </>
   );
 }

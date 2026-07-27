@@ -15,7 +15,8 @@ const isMenuLine = (value: unknown) => {
   return (
     typeof line.name === "string" &&
     (line.price === undefined || typeof line.price === "string") &&
-    (line.details === undefined || isStringArray(line.details))
+    (line.details === undefined || isStringArray(line.details)) &&
+    (line.description === undefined || typeof line.description === "string")
   );
 };
 

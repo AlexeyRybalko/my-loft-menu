@@ -433,6 +433,44 @@ html.is-preloading body { overflow: hidden; }
 .price-row span { min-width: 0; order: 1; }
 .price-row:has(> strong)::after { align-self: flex-end; min-width: 12px; margin: 0 8px 4px; border-bottom: 1px dotted rgba(255, 223, 117, .28); content: ""; flex: 1; order: 2; }
 .price-row strong { color: var(--accent); font-weight: 300; letter-spacing: .04em; white-space: nowrap; order: 3; }
+.price-row-button {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.price-row-button .price-name { display: inline; }
+.description-info {
+  display: inline-grid;
+  width: 17px;
+  height: 17px;
+  margin-left: 7px;
+  border: 1px solid rgba(255, 223, 117, .62);
+  border-radius: 50%;
+  place-items: center;
+  color: var(--accent);
+  font-family: "Manrope", sans-serif;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  opacity: .82;
+  vertical-align: 2px;
+  transition: border-color 160ms ease, background-color 160ms ease, opacity 160ms ease;
+}
+.price-row-button:active .description-info {
+  border-color: var(--accent);
+  background: rgba(255, 223, 117, .08);
+  opacity: 1;
+}
+.price-row-button:focus-visible {
+  border-radius: 4px;
+  outline: 1px solid var(--accent);
+  outline-offset: 5px;
+}
 .price-entry ul { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0 9px; padding-left: 10px; border-left: 1px solid rgba(255, 223, 117, .48); list-style: none; color: rgba(255,255,255,.82); font-size: 16px; line-height: 1.3; }
 .menu-note { margin: 14px 0 0; color: var(--accent); font-size: 15px; line-height: 1.35; }
 .menu-subsection { margin-top: 26px; }
@@ -440,6 +478,121 @@ html.is-preloading body { overflow: hidden; }
 .subsection-layout { display: flex; align-items: stretch; gap: 14px; }
 .side-price { display: flex; min-width: 88px; margin-top: 16px; padding-left: 12px; border-left: 1px solid rgba(255,223,117,.55); flex-direction: column; align-items: flex-end; justify-content: center; gap: 8px; color: var(--accent); font-size: 25px; white-space: nowrap; }
 .side-price strong { font-weight: 300; }
+
+.description-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(5, 7, 7, .68);
+  opacity: 1;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: description-backdrop-in 220ms ease both;
+}
+.description-backdrop.is-closing { animation: description-backdrop-out 220ms ease both; }
+.description-sheet {
+  position: relative;
+  width: min(430px, 100%);
+  max-height: min(78dvh, 650px);
+  overflow-y: auto;
+  padding: 0 24px calc(26px + env(safe-area-inset-bottom, 0px));
+  border: 1px solid rgba(255, 223, 117, .48);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(255, 223, 117, .08), transparent 31%),
+    linear-gradient(155deg, rgba(31, 35, 35, .99), rgba(12, 15, 15, .995));
+  box-shadow: 0 -18px 55px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255,255,255,.035);
+  color: white;
+  overscroll-behavior: contain;
+  animation: description-sheet-in 320ms cubic-bezier(.22, .72, .22, 1) both;
+}
+.description-sheet.is-closing { animation: description-sheet-out 220ms cubic-bezier(.4, 0, 1, 1) both; }
+.description-handle {
+  display: grid;
+  width: 100%;
+  height: 33px;
+  padding: 0;
+  border: 0;
+  place-items: center;
+  background: transparent;
+  touch-action: none;
+  cursor: grab;
+}
+.description-handle span {
+  width: 42px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .3);
+}
+.description-sheet-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.description-sheet-header > p {
+  margin: 0;
+  color: rgba(255, 223, 117, .7);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.description-close {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 223, 117, .34);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .025);
+  color: var(--accent);
+}
+.description-close span::before,
+.description-close span::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: 1px;
+  content: "";
+  background: currentColor;
+}
+.description-close span::before { transform: translate(-50%, -50%) rotate(45deg); }
+.description-close span::after { transform: translate(-50%, -50%) rotate(-45deg); }
+.description-close:focus-visible,
+.description-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.description-sheet h2 {
+  margin: 15px 0 0;
+  color: var(--accent);
+  font-family: "Montserrat Alternates", sans-serif;
+  font-size: clamp(25px, 7vw, 31px);
+  font-weight: 400;
+  line-height: 1.2;
+}
+.description-copy {
+  margin: 17px 0 0;
+  color: rgba(255, 255, 255, .86);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.62;
+}
+.description-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 223, 117, .24);
+  color: rgba(255, 255, 255, .7);
+  font-size: 18px;
+}
+.description-meta strong { color: var(--accent); font-size: 22px; font-weight: 300; }
+
+@keyframes description-backdrop-in { from { opacity: 0; } }
+@keyframes description-backdrop-out { to { opacity: 0; } }
+@keyframes description-sheet-in { from { transform: translateY(100%); } }
+@keyframes description-sheet-out { to { transform: translateY(100%); } }
 
 .footer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: var(--content-width); max-width: calc(100% - 32px); margin: 32px auto 0; }
 .footer-actions :is(button, a) { display: flex; min-width: 0; height: 54px; padding: 0 11px; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgba(255,223,117,.5); border-radius: 11px; background: linear-gradient(145deg, rgba(30,34,34,.96), rgba(12,14,15,.98)); color: rgba(255,223,117,.94); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 7px 18px rgba(0,0,0,.18); font-size: 15px; font-weight: 500; text-decoration: none; white-space: nowrap; }
