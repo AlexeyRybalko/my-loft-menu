@@ -140,7 +140,7 @@ export const categories: MenuCategory[] = [
     navLabel: "Чай",
     icon: "/assets/icons/tea.webp",
     fromPrice: "от 420 ₽",
-    images: imageRange("tea", 5),
+    images: imageRange("tea", 4),
     sideLabel: "750 мл",
     sidePrice: "420 ₽",
     items: [
@@ -156,7 +156,7 @@ export const categories: MenuCategory[] = [
     subsections: [
       {
         title: "Домашний чай",
-        images: imageRange("home-tea", 5),
+        images: imageRange("home-tea", 3),
         items: [
           {
             name: "Яблоко – киви",
@@ -179,7 +179,7 @@ export const categories: MenuCategory[] = [
       },
       {
         title: "Китайский чай",
-        images: imageRange("tea", 5),
+        images: imageRange("chinese-tea", 1),
         items: [
           { name: "Медовая Габа" },
           { name: "Да Хун Пао" },
