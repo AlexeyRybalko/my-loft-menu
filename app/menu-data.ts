@@ -145,7 +145,6 @@ export const categories: MenuCategory[] = [
     sidePrice: "420 ₽",
     items: [
       { name: "Сенча" },
-      { name: "Габа" },
       { name: "Гречишный" },
       { name: "Жасмин" },
       { name: "Молочный улун" },

@@ -1,23 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { categories, promotions } from "./menu-data";
 
 const SESSION_KEY = "my-loft-preloader-seen";
-const MINIMUM_VISIBLE_MS = 650;
-const MAXIMUM_WAIT_MS = 1500;
+const MINIMUM_VISIBLE_MS = 480;
+const MAXIMUM_WAIT_MS = 5000;
 const PROGRESS_FINISH_MS = 180;
 const FADE_OUT_MS = 340;
 
-const criticalImages = [
-  "/assets/logos/preloader-symbol.webp",
-  "/assets/logos/mark.webp",
-  "/assets/logos/wordmark.webp",
-  "/assets/promos/promo-1.webp",
-];
+const criticalImages = Array.from(
+  new Set(
+    [
+      "/assets/logos/preloader-symbol.webp",
+      "/assets/logos/mark.webp",
+      "/assets/logos/wordmark.webp",
+      promotions[0]?.image,
+      ...categories.flatMap((category) => [
+        category.images[0],
+        ...(category.subsections?.map((subsection) => subsection.images[0]) ?? []),
+      ]),
+    ].filter((src): src is string => Boolean(src)),
+  ),
+);
 
 const loadImage = (src: string) =>
   new Promise<void>((resolve) => {
     const image = new Image();
+    image.fetchPriority = "high";
+    image.decoding = "async";
     image.onload = () => resolve();
     image.onerror = () => resolve();
     image.src = src;
@@ -38,6 +49,7 @@ export default function Preloader() {
 
     try {
       if (window.sessionStorage.getItem(SESSION_KEY)) {
+        void Promise.allSettled(criticalImages.map(loadImage));
         hideTimer = window.setTimeout(() => setVisible(false), 0);
         return () => window.clearTimeout(hideTimer);
       }

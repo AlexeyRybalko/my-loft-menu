@@ -408,8 +408,8 @@ html.is-preloading body { overflow: hidden; }
   transform: translateX(-100%);
   transition: opacity 520ms ease;
 }
-.decorative-carousel:has(img.is-visible.image-loading)::before { opacity: .09; }
-.decorative-carousel:has(img.is-visible.image-loading)::after { opacity: 1; animation: image-loading-sweep 1700ms cubic-bezier(.4, 0, .2, 1) infinite; }
+.decorative-carousel:has(img.is-visible.image-slow)::before { opacity: .09; }
+.decorative-carousel:has(img.is-visible.image-slow)::after { opacity: 1; animation: image-loading-sweep 1700ms cubic-bezier(.4, 0, .2, 1) infinite; }
 .decorative-carousel:has(img.is-visible.image-error) { background: radial-gradient(circle at 50% 45%, rgba(255,223,117,.08), transparent 38%), linear-gradient(145deg, #202525, #0d0f10); }
 .decorative-carousel:has(img.is-visible.image-error)::before { opacity: .16; }
 .decorative-carousel img {
@@ -424,6 +424,7 @@ html.is-preloading body { overflow: hidden; }
 }
 .decorative-carousel img.is-visible { opacity: 1; }
 .decorative-carousel img.image-loading,
+.decorative-carousel img.image-slow,
 .decorative-carousel img.image-error { opacity: 0; }
 .decorative-carousel img.is-visible.image-loaded { transform: scale(1); }
 
@@ -443,6 +444,7 @@ html.is-preloading body { overflow: hidden; }
   cursor: pointer;
 }
 .price-row-button .price-name { display: inline; }
+.price-name-tail { white-space: nowrap; }
 .description-info {
   display: inline-grid;
   width: 17px;
@@ -490,9 +492,9 @@ html.is-preloading body { overflow: hidden; }
   opacity: 1;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  animation: description-backdrop-in 220ms ease both;
+  animation: description-backdrop-in 300ms ease both;
 }
-.description-backdrop.is-closing { animation: description-backdrop-out 220ms ease both; }
+.description-backdrop.is-closing { animation: description-backdrop-out 300ms ease both; }
 .description-sheet {
   position: relative;
   width: min(430px, 100%);
@@ -508,9 +510,9 @@ html.is-preloading body { overflow: hidden; }
   box-shadow: 0 -18px 55px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255,255,255,.035);
   color: white;
   overscroll-behavior: contain;
-  animation: description-sheet-in 320ms cubic-bezier(.22, .72, .22, 1) both;
+  animation: description-sheet-in 440ms cubic-bezier(.16, 1, .3, 1) both;
 }
-.description-sheet.is-closing { animation: description-sheet-out 220ms cubic-bezier(.4, 0, 1, 1) both; }
+.description-sheet.is-closing { animation: description-sheet-out 300ms cubic-bezier(.4, 0, .2, 1) both; }
 .description-handle {
   display: grid;
   width: 100%;
@@ -588,11 +590,17 @@ html.is-preloading body { overflow: hidden; }
   font-size: 18px;
 }
 .description-meta strong { color: var(--accent); font-size: 22px; font-weight: 300; }
+.description-sheet:not(.is-closing) :is(.description-sheet-header, h2, .description-copy, .description-meta) {
+  animation: description-content-in 420ms 70ms cubic-bezier(.16, 1, .3, 1) both;
+}
 
 @keyframes description-backdrop-in { from { opacity: 0; } }
 @keyframes description-backdrop-out { to { opacity: 0; } }
 @keyframes description-sheet-in { from { transform: translateY(100%); } }
 @keyframes description-sheet-out { to { transform: translateY(100%); } }
+@keyframes description-content-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
 
 .footer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: var(--content-width); max-width: calc(100% - 32px); margin: 32px auto 0; }
 .footer-actions :is(button, a) { display: flex; min-width: 0; height: 54px; padding: 0 11px; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgba(255,223,117,.5); border-radius: 11px; background: linear-gradient(145deg, rgba(30,34,34,.96), rgba(12,14,15,.98)); color: rgba(255,223,117,.94); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 7px 18px rgba(0,0,0,.18); font-size: 15px; font-weight: 500; text-decoration: none; white-space: nowrap; }
@@ -688,5 +696,5 @@ html.is-preloading body { overflow: hidden; }
   .preloader.is-finishing .preloader-progress span,
   .preloader.is-leaving .preloader-progress span { transform: scaleX(1); }
   .decorative-carousel img { animation: none !important; transform: none !important; }
-  .decorative-carousel:has(img.is-visible.image-loading)::after { animation: none !important; opacity: .22; transform: none; }
+  .decorative-carousel:has(img.is-visible.image-slow)::after { animation: none !important; opacity: .22; transform: none; }
 }

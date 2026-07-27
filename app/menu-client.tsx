@@ -22,6 +22,9 @@ const fallbackContent: MenuContentDocument = {
   categories: fallbackCategories,
 };
 
+const SLOW_IMAGE_THRESHOLD_MS = 850;
+const DESCRIPTION_CLOSE_MS = 300;
+
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
 
@@ -88,12 +91,21 @@ function ResilientImage({
   className: string;
   loading?: "eager" | "lazy";
 }) {
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [status, setStatus] =
+    useState<"loading" | "slow" | "loaded" | "error">("loading");
   const imageRef = useCallback((image: HTMLImageElement | null) => {
     if (!image?.complete) return;
     const nextStatus = image.naturalWidth > 0 ? "loaded" : "error";
     window.setTimeout(() => setStatus(nextStatus), 0);
   }, []);
+
+  useEffect(() => {
+    const slowTimer = window.setTimeout(
+      () => setStatus((current) => (current === "loading" ? "slow" : current)),
+      SLOW_IMAGE_THRESHOLD_MS,
+    );
+    return () => window.clearTimeout(slowTimer);
+  }, [src]);
 
   return (
     <img
@@ -280,6 +292,22 @@ type DescriptionSelection = {
   trigger: HTMLButtonElement;
 };
 
+function DescribedItemName({ name }: { name: string }) {
+  const lastSpaceIndex = name.lastIndexOf(" ");
+  const prefix = lastSpaceIndex >= 0 ? name.slice(0, lastSpaceIndex + 1) : "";
+  const tail = lastSpaceIndex >= 0 ? name.slice(lastSpaceIndex + 1) : name;
+
+  return (
+    <span className="price-name">
+      {prefix}
+      <span className="price-name-tail">
+        {tail}
+        <span className="description-info" aria-hidden="true">i</span>
+      </span>
+    </span>
+  );
+}
+
 function PriceList({
   items,
   volume,
@@ -309,10 +337,7 @@ function PriceList({
                 })
               }
             >
-              <span className="price-name">
-                {item.name}
-                <span className="description-info" aria-hidden="true">i</span>
-              </span>
+              <DescribedItemName name={item.name} />
               {item.price && <strong>{item.price}</strong>}
             </button>
           ) : (
@@ -359,37 +384,39 @@ function DescriptionSheet({
       return;
     }
     setClosing(true);
-    closeTimerRef.current = window.setTimeout(onClose, 220);
+    closeTimerRef.current = window.setTimeout(onClose, DESCRIPTION_CLOSE_MS);
   }, [closing, onClose, reducedMotion]);
 
   useEffect(() => {
     const page = document.querySelector<HTMLElement>(".page-shell");
     const body = document.body;
+    const html = document.documentElement;
     const scrollY = window.scrollY;
     const previousBodyStyles = {
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width,
       overflow: body.style.overflow,
+    };
+    const previousHtmlStyles = {
+      overflow: html.style.overflow,
+      scrollBehavior: html.style.scrollBehavior,
     };
     const pageWasInert = page?.hasAttribute("inert") ?? false;
 
     page?.setAttribute("inert", "");
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
+    html.style.overflow = "hidden";
     body.style.overflow = "hidden";
     closeButtonRef.current?.focus({ preventScroll: true });
 
     return () => {
       window.clearTimeout(closeTimerRef.current);
       if (!pageWasInert) page?.removeAttribute("inert");
-      body.style.position = previousBodyStyles.position;
-      body.style.top = previousBodyStyles.top;
-      body.style.width = previousBodyStyles.width;
       body.style.overflow = previousBodyStyles.overflow;
-      window.scrollTo({ top: scrollY, behavior: "auto" });
-      window.requestAnimationFrame(() => selection.trigger.focus({ preventScroll: true }));
+      html.style.overflow = previousHtmlStyles.overflow;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, scrollY);
+      window.requestAnimationFrame(() => {
+        html.style.scrollBehavior = previousHtmlStyles.scrollBehavior;
+        selection.trigger.focus({ preventScroll: true });
+      });
     };
   }, [selection.trigger]);
 
