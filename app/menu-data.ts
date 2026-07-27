@@ -215,6 +215,8 @@ export const categories: MenuCategory[] = [
     items: [
       { name: "Сэндвич LITE", price: "390 ₽" },
       { name: "Сэндвич BIG", price: "450 ₽" },
+      { name: "Картофель фри", price: "290 ₽" },
+      { name: "Картофель по-деревенски", price: "290 ₽" },
       {
         name: "Завтраки",
         price: "650 ₽",
