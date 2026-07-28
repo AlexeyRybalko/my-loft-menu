@@ -24,6 +24,7 @@ const fallbackContent: MenuContentDocument = {
 
 const SLOW_IMAGE_THRESHOLD_MS = 850;
 const DESCRIPTION_CLOSE_MS = 300;
+const DESCRIPTION_DRAG_ACTIVATION_PX = 6;
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -375,6 +376,7 @@ function DescriptionSheet({
   const [dragPhase, setDragPhase] = useState<
     "idle" | "dragging" | "settling" | "closing"
   >("idle");
+  const [introFinished, setIntroFinished] = useState(reducedMotion);
   const dialogRef = useRef<HTMLElement>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -386,6 +388,10 @@ function DescriptionSheet({
       onClose();
       return;
     }
+    dragStartYRef.current = null;
+    dragOffsetRef.current = 0;
+    setDragOffset(0);
+    setDragPhase("idle");
     setClosing(true);
     closeTimerRef.current = window.setTimeout(onClose, DESCRIPTION_CLOSE_MS);
   }, [closing, onClose, reducedMotion]);
@@ -502,7 +508,6 @@ function DescriptionSheet({
       if (!touch) return;
       dragStartYRef.current = touch.clientY;
       dragOffsetRef.current = 0;
-      setDragPhase("dragging");
     };
 
     const handleTouchMove = (event: TouchEvent) => {
@@ -516,7 +521,11 @@ function DescriptionSheet({
       }
       const touch = event.touches[0];
       if (!touch) return;
-      const nextOffset = Math.max(0, touch.clientY - dragStartYRef.current);
+      const distance = touch.clientY - dragStartYRef.current;
+      if (distance <= DESCRIPTION_DRAG_ACTIVATION_PX) return;
+      const nextOffset = distance - DESCRIPTION_DRAG_ACTIVATION_PX;
+      setIntroFinished(true);
+      setDragPhase("dragging");
       if (nextOffset <= 0) return;
       event.preventDefault();
       dragOffsetRef.current = nextOffset;
@@ -549,13 +558,16 @@ function DescriptionSheet({
     }
     dragStartYRef.current = event.clientY;
     dragOffsetRef.current = 0;
-    setDragPhase("dragging");
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handleDragMove = (event: React.PointerEvent<HTMLElement>) => {
     if (event.pointerType === "touch" || dragStartYRef.current === null) return;
-    const nextOffset = Math.max(0, event.clientY - dragStartYRef.current);
+    const distance = event.clientY - dragStartYRef.current;
+    if (distance <= DESCRIPTION_DRAG_ACTIVATION_PX) return;
+    const nextOffset = distance - DESCRIPTION_DRAG_ACTIVATION_PX;
+    setIntroFinished(true);
+    setDragPhase("dragging");
     if (nextOffset > 0) event.preventDefault();
     dragOffsetRef.current = nextOffset;
     setDragOffset(nextOffset);
@@ -581,7 +593,7 @@ function DescriptionSheet({
         ref={dialogRef}
         className={`description-sheet ${closing ? "is-closing" : ""} ${
           dragPhase !== "idle" ? `is-drag-${dragPhase}` : ""
-        }`}
+        } ${introFinished ? "is-entered" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="description-title"
@@ -592,6 +604,14 @@ function DescriptionSheet({
         onPointerMove={handleDragMove}
         onPointerUp={handleDragEnd}
         onPointerCancel={handleDragEnd}
+        onAnimationEnd={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.animationName === "description-sheet-in"
+          ) {
+            setIntroFinished(true);
+          }
+        }}
         onTransitionEnd={() => {
           if (dragPhase === "settling") setDragPhase("idle");
         }}

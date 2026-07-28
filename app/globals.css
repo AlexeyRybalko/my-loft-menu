@@ -515,6 +515,7 @@ html.is-preloading body { overflow: hidden; }
 }
 .description-sheet:focus { outline: none; }
 .description-sheet.is-closing:not(.is-drag-closing) { animation: description-sheet-out 300ms cubic-bezier(.4, 0, .2, 1) both; }
+.description-sheet.is-entered:not(.is-closing) { animation: none; }
 .description-sheet:is(.is-drag-dragging, .is-drag-settling, .is-drag-closing) { animation: none; }
 .description-sheet.is-drag-dragging {
   user-select: none;
