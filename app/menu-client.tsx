@@ -290,6 +290,7 @@ type DescriptionSelection = {
   volume?: string;
   price?: string;
   trigger: HTMLButtonElement;
+  restoreFocus: boolean;
 };
 
 function DescribedItemName({ name }: { name: string }) {
@@ -334,6 +335,7 @@ function PriceList({
                   volume,
                   price: item.price ?? price,
                   trigger: event.currentTarget,
+                  restoreFocus: event.detail === 0,
                 })
               }
             >
@@ -370,11 +372,12 @@ function DescriptionSheet({
 }) {
   const [closing, setClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [dragPhase, setDragPhase] = useState<
+    "idle" | "dragging" | "settling" | "closing"
+  >("idle");
   const dialogRef = useRef<HTMLElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
-  const dragMovedRef = useRef(false);
   const closeTimerRef = useRef(0);
 
   const requestClose = useCallback(() => {
@@ -384,6 +387,22 @@ function DescriptionSheet({
       return;
     }
     setClosing(true);
+    closeTimerRef.current = window.setTimeout(onClose, DESCRIPTION_CLOSE_MS);
+  }, [closing, onClose, reducedMotion]);
+
+  const requestDragClose = useCallback(() => {
+    if (closing) return;
+    if (reducedMotion) {
+      onClose();
+      return;
+    }
+    setClosing(true);
+    setDragPhase("closing");
+    window.requestAnimationFrame(() => {
+      const exitOffset = (dialogRef.current?.offsetHeight ?? window.innerHeight) + 24;
+      dragOffsetRef.current = exitOffset;
+      setDragOffset(exitOffset);
+    });
     closeTimerRef.current = window.setTimeout(onClose, DESCRIPTION_CLOSE_MS);
   }, [closing, onClose, reducedMotion]);
 
@@ -404,7 +423,7 @@ function DescriptionSheet({
     page?.setAttribute("inert", "");
     html.style.overflow = "hidden";
     body.style.overflow = "hidden";
-    closeButtonRef.current?.focus({ preventScroll: true });
+    dialogRef.current?.focus({ preventScroll: true });
 
     return () => {
       window.clearTimeout(closeTimerRef.current);
@@ -415,10 +434,14 @@ function DescriptionSheet({
       window.scrollTo(0, scrollY);
       window.requestAnimationFrame(() => {
         html.style.scrollBehavior = previousHtmlStyles.scrollBehavior;
-        selection.trigger.focus({ preventScroll: true });
+        if (selection.restoreFocus) {
+          selection.trigger.focus({ preventScroll: true });
+        } else {
+          selection.trigger.blur();
+        }
       });
     };
-  }, [selection.trigger]);
+  }, [selection.restoreFocus, selection.trigger]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.key === "Escape") {
@@ -443,34 +466,107 @@ function DescriptionSheet({
     }
   };
 
-  const handleDragStart = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const finishDrag = useCallback(() => {
+    if (dragStartYRef.current === null) return;
+    dragStartYRef.current = null;
+    if (dragOffsetRef.current > 64) {
+      requestDragClose();
+    } else if (dragOffsetRef.current > 0) {
+      dragOffsetRef.current = 0;
+      setDragPhase("settling");
+      setDragOffset(0);
+    } else {
+      dragOffsetRef.current = 0;
+      setDragPhase("idle");
+      setDragOffset(0);
+    }
+  }, [requestDragClose]);
+
+  useEffect(() => {
+    const sheet = dialogRef.current;
+    if (!sheet) return;
+
+    const isInteractiveTarget = (target: EventTarget | null) =>
+      target instanceof Element &&
+      Boolean(target.closest("button, a, input, textarea, select"));
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (
+        closing ||
+        sheet.scrollTop > 0 ||
+        isInteractiveTarget(event.target)
+      ) {
+        return;
+      }
+      const touch = event.touches[0];
+      if (!touch) return;
+      dragStartYRef.current = touch.clientY;
+      dragOffsetRef.current = 0;
+      setDragPhase("dragging");
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (dragStartYRef.current === null) return;
+      if (sheet.scrollTop > 0) {
+        dragStartYRef.current = null;
+        dragOffsetRef.current = 0;
+        setDragOffset(0);
+        setDragPhase("idle");
+        return;
+      }
+      const touch = event.touches[0];
+      if (!touch) return;
+      const nextOffset = Math.max(0, touch.clientY - dragStartYRef.current);
+      if (nextOffset <= 0) return;
+      event.preventDefault();
+      dragOffsetRef.current = nextOffset;
+      setDragOffset(nextOffset);
+    };
+
+    sheet.addEventListener("touchstart", handleTouchStart, { passive: true });
+    sheet.addEventListener("touchmove", handleTouchMove, { passive: false });
+    sheet.addEventListener("touchend", finishDrag);
+    sheet.addEventListener("touchcancel", finishDrag);
+
+    return () => {
+      sheet.removeEventListener("touchstart", handleTouchStart);
+      sheet.removeEventListener("touchmove", handleTouchMove);
+      sheet.removeEventListener("touchend", finishDrag);
+      sheet.removeEventListener("touchcancel", finishDrag);
+    };
+  }, [closing, finishDrag]);
+
+  const handleDragStart = (event: React.PointerEvent<HTMLElement>) => {
+    const target = event.target as Element;
+    if (
+      closing ||
+      event.pointerType === "touch" ||
+      event.button !== 0 ||
+      event.currentTarget.scrollTop > 0 ||
+      target.closest("button, a, input, textarea, select")
+    ) {
+      return;
+    }
     dragStartYRef.current = event.clientY;
     dragOffsetRef.current = 0;
-    dragMovedRef.current = false;
+    setDragPhase("dragging");
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handleDragMove = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (dragStartYRef.current === null) return;
+  const handleDragMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === "touch" || dragStartYRef.current === null) return;
     const nextOffset = Math.max(0, event.clientY - dragStartYRef.current);
+    if (nextOffset > 0) event.preventDefault();
     dragOffsetRef.current = nextOffset;
-    if (nextOffset > 4) dragMovedRef.current = true;
     setDragOffset(nextOffset);
   };
 
-  const handleDragEnd = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const handleDragEnd = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === "touch" || dragStartYRef.current === null) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    dragStartYRef.current = null;
-    if (dragOffsetRef.current > 64) {
-      dragOffsetRef.current = 0;
-      setDragOffset(0);
-      requestClose();
-    } else {
-      dragOffsetRef.current = 0;
-      setDragOffset(0);
-    }
+    finishDrag();
   };
 
   return (
@@ -483,33 +579,37 @@ function DescriptionSheet({
     >
       <section
         ref={dialogRef}
-        className={`description-sheet ${closing ? "is-closing" : ""}`}
+        className={`description-sheet ${closing ? "is-closing" : ""} ${
+          dragPhase !== "idle" ? `is-drag-${dragPhase}` : ""
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="description-title"
         aria-describedby="description-copy"
+        tabIndex={-1}
         onKeyDown={handleKeyDown}
-        style={dragOffset ? { transform: `translateY(${dragOffset}px)` } : undefined}
+        onPointerDown={handleDragStart}
+        onPointerMove={handleDragMove}
+        onPointerUp={handleDragEnd}
+        onPointerCancel={handleDragEnd}
+        onTransitionEnd={() => {
+          if (dragPhase === "settling") setDragPhase("idle");
+        }}
+        style={
+          dragPhase !== "idle"
+            ? { transform: `translate3d(0, ${dragOffset}px, 0)` }
+            : undefined
+        }
       >
-        <button
+        <div
           className="description-handle"
-          type="button"
-          aria-label="Закрыть описание"
-          onPointerDown={handleDragStart}
-          onPointerMove={handleDragMove}
-          onPointerUp={handleDragEnd}
-          onPointerCancel={handleDragEnd}
-          onClick={() => {
-            if (!dragMovedRef.current) requestClose();
-            dragMovedRef.current = false;
-          }}
+          aria-hidden="true"
         >
           <span aria-hidden="true" />
-        </button>
+        </div>
         <div className="description-sheet-header">
           <p>Подробнее о напитке</p>
           <button
-            ref={closeButtonRef}
             className="description-close"
             type="button"
             aria-label="Закрыть описание"
