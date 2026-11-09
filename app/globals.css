@@ -13,8 +13,8 @@
 * { box-sizing: border-box; }
 
 html {
-  min-width: 320px;
   background: var(--page);
+  scrollbar-gutter: stable;
   scroll-behavior: smooth;
 }
 
