@@ -597,7 +597,11 @@ function DescriptionSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="description-title"
-        aria-describedby="description-copy"
+        aria-describedby={
+          selection.item.ingredients
+            ? "description-ingredients description-copy"
+            : "description-copy"
+        }
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         onPointerDown={handleDragStart}
@@ -639,6 +643,11 @@ function DescriptionSheet({
           </button>
         </div>
         <h2 id="description-title">{selection.item.name}</h2>
+        {selection.item.ingredients && (
+          <p id="description-ingredients" className="description-ingredients">
+            {selection.item.ingredients}
+          </p>
+        )}
         <p id="description-copy" className="description-copy">
           {selection.item.description}
         </p>
@@ -1018,7 +1027,7 @@ export default function MenuClient() {
         <div className="footer-copy">
           <p>Курить строго запрещено -<br />Курите нежно!</p>
           <small>Цены и наличие позиций уточняйте у администратора</small>
-          <small className="accent">Меню обновлено: июль 2026</small>
+          <small className="accent">Меню обновлено: ноябрь 2026</small>
         </div>
       </footer>
 
